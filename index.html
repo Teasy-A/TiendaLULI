@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tienda</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --card: #18181b;
+    --text: #f4f4f5;
+    --muted: #9a9aa0;
+    --accent: #2ea6ff;
+    --accent-text: #ffffff;
+    --border: #2a2a2e;
+    --success: #2ecc71;
+    --danger: #e74c3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    padding-bottom: 100px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 8px 0 16px;
+  }
+  .product-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .product-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    background: #222;
+    display: block;
+  }
+  .product-info {
+    padding: 14px 16px;
+  }
+  .product-name {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .product-desc {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 12px;
+    line-height: 1.4;
+  }
+  .product-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .btn {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .screen {
+    display: none;
+  }
+  .screen.active {
+    display: block;
+  }
+  .field {
+    margin-bottom: 14px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .field textarea {
+    resize: none;
+    min-height: 70px;
+  }
+  .back-link {
+    color: var(--accent);
+    font-size: 14px;
+    cursor: pointer;
+    margin-bottom: 14px;
+    display: inline-block;
+  }
+  .order-summary {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  .order-summary .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+  .order-summary .row.total {
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    padding-top: 10px;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .status-box {
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .status-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+  .status-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .status-text {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .order-id {
+    font-family: monospace;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--accent);
+  }
+  #connect-wrap {
+    margin-bottom: 16px;
+  }
+  .error-text {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 8px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- PANTALLA 1: catálogo -->
+<div id="screen-catalog" class="screen active">
+  <h1>Catálogo</h1>
+  <div id="connect-wrap"></div>
+  <div id="product-list"></div>
+</div>
+
+<!-- PANTALLA 2: checkout / dirección -->
+<div id="screen-checkout" class="screen">
+  <span class="back-link" onclick="goTo('catalog')">&larr; Volver</span>
+  <h1>Finalizar compra</h1>
+
+  <div class="order-summary" id="order-summary"></div>
+
+  <div class="field">
+    <label>Nombre completo</label>
+    <input type="text" id="inp-name" placeholder="Tu nombre">
+  </div>
+  <div class="field">
+    <label>Dirección de envío completa</label>
+    <textarea id="inp-address" placeholder="Calle, número, ciudad, código postal, país"></textarea>
+  </div>
+  <div class="field">
+    <label>Teléfono de contacto (opcional)</label>
+    <input type="text" id="inp-phone" placeholder="+34...">
+  </div>
+
+  <button class="btn btn-primary" id="btn-pay">Pagar con wallet</button>
+  <div class="error-text" id="checkout-error"></div>
+</div>
+
+<!-- PANTALLA 3: estado del pago -->
+<div id="screen-status" class="screen">
+  <div class="status-box">
+    <div class="status-icon" id="status-icon">⏳</div>
+    <div class="status-title" id="status-title">Procesando...</div>
+    <div class="status-text" id="status-text"></div>
+    <div class="order-id" id="status-orderid"></div>
+  </div>
+</div>
+
+<script>
+// =================================================================
+// CONFIGURACIÓN — cambia estos valores
+// =================================================================
+const CONFIG = {
+  // Tu wallet de Tonkeeper donde recibes los pagos
+  RECEIVER_WALLET: "UQABcTNu6gmWe6j9V7Nn-vswy8UB7z2eUlsXQhOTns5xb6Vl",
+
+  // URL pública donde vas a alojar este manifest (lo armamos en el siguiente paso)
+  MANIFEST_URL: "https://TU-DOMINIO-AQUI.com/tonconnect-manifest.json",
+
+  // API pública y gratuita para obtener el precio actual de TON en USD
+  PRICE_API: "https://tonapi.io/v2/rates?tokens=ton&currencies=usd",
+};
+
+// Catálogo de productos — agrega más objetos aquí si subes más diseños
+// El precio se define en USD; el monto en TON se calcula automáticamente
+// al momento de pagar, usando el precio de mercado del momento.
+const PRODUCTS = [
+  {
+    id: "camiseta-01",
+    name: "Camiseta diseño 01",
+    description: "Descripción corta del diseño y la tela.",
+    priceUSD: 25.00, // PRECIO EN USD — cambia este número por el real
+    image: "assets/camiseta1.jpg"
+  }
+];
+
+// =================================================================
+// ESTADO
+// =================================================================
+let selectedProduct = null;
+let tonConnectUI = null;
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+}
+
+// =================================================================
+// RENDER DEL CATÁLOGO
+// =================================================================
+function renderCatalog() {
+  const list = document.getElementById("product-list");
+  list.innerHTML = "";
+  PRODUCTS.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "product-card";
+    card.innerHTML = `
+      <img class="product-image" src="${p.image}" alt="${p.name}" onerror="this.style.background='#2a2a2e'">
+      <div class="product-info">
+        <div class="product-name">${p.name}</div>
+        <div class="product-desc">${p.description}</div>
+        <div class="product-price">$${p.priceUSD.toFixed(2)} USD</div>
+        <button class="btn btn-primary" onclick="selectProduct('${p.id}')">Comprar</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function selectProduct(id) {
+  selectedProduct = PRODUCTS.find(p => p.id === id);
+  if (!selectedProduct) return;
+
+  document.getElementById("order-summary").innerHTML = `
+    <div class="row"><span>${selectedProduct.name}</span><span>$${selectedProduct.priceUSD.toFixed(2)} USD</span></div>
+    <div class="row total"><span>Total</span><span id="total-ton">Calculando equivalente en TON...</span></div>
+  `;
+  document.getElementById("btn-pay").disabled = true;
+  goTo("checkout");
+  updateTonAmount();
+}
+
+function goTo(screen) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + screen).classList.add("active");
+}
+
+// =================================================================
+// TON CONNECT — conexión de wallet
+// =================================================================
+function initTonConnect() {
+  tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: CONFIG.MANIFEST_URL,
+    buttonRootId: "connect-wrap"
+  });
+}
+
+// =================================================================
+// GENERAR ID DE PEDIDO ÚNICO
+// =================================================================
+function generateOrderId() {
+  const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const ts = Date.now().toString().slice(-5);
+  return `ORD-${rand}${ts}`;
+}
+
+// =================================================================
+// PRECIO DE TON EN VIVO
+// =================================================================
+async function getTonPriceUSD() {
+  try {
+    const res = await fetch(CONFIG.PRICE_API);
+    const data = await res.json();
+    return data.rates.TON.prices.USD;
+  } catch (err) {
+    console.error("No se pudo obtener el precio de TON", err);
+    return null;
+  }
+}
+
+// Actualiza el resumen del pedido en pantalla con el monto en TON
+async function updateTonAmount() {
+  const priceUSD = await getTonPriceUSD();
+  const totalBox = document.getElementById("total-ton");
+  if (!priceUSD) {
+    totalBox.textContent = "Error obteniendo precio, intenta de nuevo";
+    document.getElementById("btn-pay").disabled = true;
+    return null;
+  }
+  const tonAmount = selectedProduct.priceUSD / priceUSD;
+  selectedProduct.tonAmount = tonAmount;
+  selectedProduct.tonPriceAtCheckout = priceUSD;
+  totalBox.textContent = `≈ ${tonAmount.toFixed(4)} TON`;
+  document.getElementById("btn-pay").disabled = false;
+  return tonAmount;
+}
+
+// =================================================================
+// CHECKOUT — generar transacción y enviarla a la wallet del cliente
+// =================================================================
+document.getElementById("btn-pay").addEventListener("click", async () => {
+  const name = document.getElementById("inp-name").value.trim();
+  const address = document.getElementById("inp-address").value.trim();
+  const phone = document.getElementById("inp-phone").value.trim();
+  const errorBox = document.getElementById("checkout-error");
+
+  if (!name || !address) {
+    errorBox.textContent = "Completa nombre y dirección de envío.";
+    errorBox.style.display = "block";
+    return;
+  }
+  errorBox.style.display = "none";
+
+  if (!tonConnectUI.connected) {
+    errorBox.textContent = "Conecta tu wallet primero (botón arriba en el catálogo).";
+    errorBox.style.display = "block";
+    return;
+  }
+
+  if (!selectedProduct.tonAmount) {
+    errorBox.textContent = "Espera a que se calcule el monto en TON.";
+    errorBox.style.display = "block";
+    return;
+  }
+
+  const orderId = generateOrderId();
+
+  // Datos del pedido — el bot va a recibir esto cuando el cliente confirme
+  const orderData = {
+    orderId,
+    product: selectedProduct.id,
+    productName: selectedProduct.name,
+    priceUSD: selectedProduct.priceUSD,
+    tonAmount: selectedProduct.tonAmount,
+    name,
+    address,
+    phone,
+    walletSender: tonConnectUI.account?.address || "desconocida"
+  };
+
+  document.getElementById("btn-pay").disabled = true;
+  document.getElementById("btn-pay").textContent = "Abriendo wallet...";
+
+  // Monto en nanoTON (1 TON = 1,000,000,000 nanoTON)
+  const nanoAmount = Math.round(selectedProduct.tonAmount * 1e9).toString();
+
+  // El comment/memo es el orderId — así el bot identifica cada pago
+  // sin ambigüedad cuando revise las transacciones entrantes.
+  const transaction = {
+    validUntil: Math.floor(Date.now() / 1000) + 360,
+    messages: [
+      {
+        address: CONFIG.RECEIVER_WALLET,
+        amount: nanoAmount,
+        payload: buildCommentPayload(orderId)
+      }
+    ]
+  };
+
+  try {
+    await tonConnectUI.sendTransaction(transaction);
+
+    // El cliente confirmó en su wallet. Mandamos los datos del pedido
+    // al bot vía Telegram WebApp para que te avise inmediatamente.
+    if (tg) {
+      tg.sendData(JSON.stringify(orderData));
+    }
+
+    showStatus("success", orderId);
+  } catch (err) {
+    console.error(err);
+    document.getElementById("btn-pay").disabled = false;
+    document.getElementById("btn-pay").textContent = "Pagar con wallet";
+    errorBox.textContent = "El pago no se completó o fue cancelado. Intenta de nuevo.";
+    errorBox.style.display = "block";
+  }
+});
+
+// Codifica un comentario de texto simple como payload de TON
+// (formato estándar: 4 bytes en cero + el texto en UTF-8, en base64)
+function buildCommentPayload(text) {
+  const prefix = new Uint8Array([0, 0, 0, 0]);
+  const textBytes = new TextEncoder().encode(text);
+  const combined = new Uint8Array(prefix.length + textBytes.length);
+  combined.set(prefix);
+  combined.set(textBytes, prefix.length);
+  let binary = "";
+  combined.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+
+function showStatus(type, orderId) {
+  goTo("status");
+  const icon = document.getElementById("status-icon");
+  const title = document.getElementById("status-title");
+  const text = document.getElementById("status-text");
+  const idBox = document.getElementById("status-orderid");
+
+  if (type === "success") {
+    icon.textContent = "✅";
+    title.textContent = "Pago enviado";
+    text.textContent = "Tu pedido fue registrado. Te contactaremos por Telegram para confirmar el envío.";
+    idBox.textContent = orderId;
+  } else {
+    icon.textContent = "❌";
+    title.textContent = "Algo salió mal";
+    text.textContent = "Intenta nuevamente o contacta soporte.";
+  }
+}
+
+// =================================================================
+// INIT
+// =================================================================
+renderCatalog();
+initTonConnect();
+</script>
+</body>
+</html>
